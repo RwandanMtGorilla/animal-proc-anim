@@ -29,21 +29,57 @@ export class Lizard {
 
     // Width of the lizard at each vertebra
     this.bodyWidth = [52, 58, 40, 60, 68, 71, 65, 50, 28, 15, 11, 9, 7, 7];
+
+    // Movement control parameters
+    this.lastDirection = createVector(1, 0);  // Initial direction
+    this.maxTurnAngle = PI / 6;  // Maximum turn angle per frame: 30 degrees
   }
 
   /**
-   * Update lizard position and leg IK
+   * Update lizard position and leg IK with smooth turning
    */
   resolve() {
     const headPos = this.spine.joints[0];
     const mousePos = createVector(mouseX, mouseY);
-    const targetPos = p5.Vector.add(
-      headPos,
-      p5.Vector.sub(mousePos, headPos).setMag(12)
-    );
+    const distToMouse = p5.Vector.dist(headPos, mousePos);
+
+    // Prevent jittering when too close to mouse
+    if (distToMouse < 20) {
+      // Still update legs even when not moving body
+      this._updateLegs();
+      return;
+    }
+
+    // Calculate desired direction
+    const desiredDirection = p5.Vector.sub(mousePos, headPos).normalize();
+
+    // Calculate angle difference
+    const currentAngle = this.lastDirection.heading();
+    const desiredAngle = desiredDirection.heading();
+    let angleDiff = desiredAngle - currentAngle;
+
+    // Handle angle wrapping (-PI to PI)
+    while (angleDiff > PI) angleDiff -= TWO_PI;
+    while (angleDiff < -PI) angleDiff += TWO_PI;
+
+    // Constrain turn rate
+    const actualAngleDiff = constrain(angleDiff, -this.maxTurnAngle, this.maxTurnAngle);
+    const newAngle = currentAngle + actualAngleDiff;
+    this.lastDirection = p5.Vector.fromAngle(newAngle);
+
+    // Apply movement
+    const targetPos = p5.Vector.add(headPos, p5.Vector.mult(this.lastDirection, 12));
     this.spine.resolve(targetPos);
 
-    // Update each leg with FABRIK
+    // Update legs
+    this._updateLegs();
+  }
+
+  /**
+   * Update leg positions using FABRIK IK
+   * @private
+   */
+  _updateLegs() {
     for (let i = 0; i < this.arms.length; i++) {
       const side = i % 2 === 0 ? 1 : -1;
       const bodyIndex = i < 2 ? 3 : 7; // Front/back attachment point

@@ -17,18 +17,44 @@ export class Snake {
   constructor(origin) {
     this.spine = new Chain(origin, 48, 64, PI/8);
     this.bodyColor = color(172, 57, 49);
+
+    // Movement control parameters
+    this.lastDirection = createVector(1, 0);  // Initial direction
+    this.maxTurnAngle = PI / 8;  // Maximum turn angle per frame: 22.5 degrees (slower turning)
   }
 
   /**
-   * Update snake position to follow mouse
+   * Update snake position to follow mouse with smooth turning
    */
   resolve() {
     const headPos = this.spine.joints[0];
     const mousePos = createVector(mouseX, mouseY);
-    const targetPos = p5.Vector.add(
-      headPos,
-      p5.Vector.sub(mousePos, headPos).setMag(8)
-    );
+    const distToMouse = p5.Vector.dist(headPos, mousePos);
+
+    // Prevent jittering when too close to mouse
+    if (distToMouse < 15) {
+      return;
+    }
+
+    // Calculate desired direction
+    const desiredDirection = p5.Vector.sub(mousePos, headPos).normalize();
+
+    // Calculate angle difference
+    const currentAngle = this.lastDirection.heading();
+    const desiredAngle = desiredDirection.heading();
+    let angleDiff = desiredAngle - currentAngle;
+
+    // Handle angle wrapping (-PI to PI)
+    while (angleDiff > PI) angleDiff -= TWO_PI;
+    while (angleDiff < -PI) angleDiff += TWO_PI;
+
+    // Constrain turn rate
+    const actualAngleDiff = constrain(angleDiff, -this.maxTurnAngle, this.maxTurnAngle);
+    const newAngle = currentAngle + actualAngleDiff;
+    this.lastDirection = p5.Vector.fromAngle(newAngle);
+
+    // Apply movement
+    const targetPos = p5.Vector.add(headPos, p5.Vector.mult(this.lastDirection, 8));
     this.spine.resolve(targetPos);
   }
 
