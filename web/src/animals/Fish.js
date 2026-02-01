@@ -25,6 +25,9 @@ export class Fish {
 
     // Width of the fish at each vertebra
     this.bodyWidth = [68, 81, 84, 83, 77, 64, 51, 38, 32, 19];
+
+    // Smooth target for reducing jitter
+    this.smoothTarget = null;
   }
 
   /**
@@ -33,11 +36,18 @@ export class Fish {
   resolve() {
     const headPos = this.spine.joints[0];
     const mousePos = createVector(mouseX, mouseY);
-    const targetPos = p5.Vector.add(
+    const rawTarget = p5.Vector.add(
       headPos,
       p5.Vector.sub(mousePos, headPos).setMag(16)
     );
-    this.spine.resolve(targetPos);
+
+    // Exponential smoothing to reduce jitter (0.15 = smoothing factor)
+    if (!this.smoothTarget) {
+      this.smoothTarget = rawTarget.copy();
+    }
+    this.smoothTarget.lerp(rawTarget, 0.15);
+
+    this.spine.resolve(this.smoothTarget);
   }
 
   /**
@@ -110,6 +120,11 @@ export class Fish {
     // === START BODY ===
     beginShape();
 
+    // Leading vertices for smooth curve closure (tangent control)
+    curveVertex(this._getPosX(0, -PI/6, 0), this._getPosY(0, -PI/6, 0));
+    curveVertex(this._getPosX(0, 0, 4), this._getPosY(0, 0, 4));
+    curveVertex(this._getPosX(0, PI/6, 0), this._getPosY(0, PI/6, 0));
+
     // Right half of the fish
     for (let i = 0; i < 10; i++) {
       curveVertex(this._getPosX(i, PI/2, 0), this._getPosY(i, PI/2, 0));
@@ -128,7 +143,7 @@ export class Fish {
     curveVertex(this._getPosX(0, 0, 4), this._getPosY(0, 0, 4));
     curveVertex(this._getPosX(0, PI/6, 0), this._getPosY(0, PI/6, 0));
 
-    // Some overlap needed because curveVertex requires extra vertices that are not rendered
+    // Trailing vertices for smooth curve closure (repeat first vertices)
     curveVertex(this._getPosX(0, PI/2, 0), this._getPosY(0, PI/2, 0));
     curveVertex(this._getPosX(1, PI/2, 0), this._getPosY(1, PI/2, 0));
     curveVertex(this._getPosX(2, PI/2, 0), this._getPosY(2, PI/2, 0));

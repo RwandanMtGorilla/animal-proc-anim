@@ -17,6 +17,9 @@ export class Snake {
   constructor(origin) {
     this.spine = new Chain(origin, 48, 64, PI/8);
     this.bodyColor = color(172, 57, 49);
+
+    // Smooth target for reducing jitter
+    this.smoothTarget = null;
   }
 
   /**
@@ -25,11 +28,18 @@ export class Snake {
   resolve() {
     const headPos = this.spine.joints[0];
     const mousePos = createVector(mouseX, mouseY);
-    const targetPos = p5.Vector.add(
+    const rawTarget = p5.Vector.add(
       headPos,
       p5.Vector.sub(mousePos, headPos).setMag(8)
     );
-    this.spine.resolve(targetPos);
+
+    // Exponential smoothing to reduce jitter (0.15 = smoothing factor)
+    if (!this.smoothTarget) {
+      this.smoothTarget = rawTarget.copy();
+    }
+    this.smoothTarget.lerp(rawTarget, 0.15);
+
+    this.spine.resolve(this.smoothTarget);
   }
 
   /**
@@ -42,6 +52,11 @@ export class Snake {
 
     // === START BODY ===
     beginShape();
+
+    // Leading vertices for smooth curve closure (tangent control)
+    curveVertex(this._getPosX(0, -PI/6, 0), this._getPosY(0, -PI/6, 0));
+    curveVertex(this._getPosX(0, 0, 0), this._getPosY(0, 0, 0));
+    curveVertex(this._getPosX(0, PI/6, 0), this._getPosY(0, PI/6, 0));
 
     // Right half of the snake
     for (let i = 0; i < this.spine.joints.length; i++) {
@@ -60,7 +75,7 @@ export class Snake {
     curveVertex(this._getPosX(0, 0, 0), this._getPosY(0, 0, 0));
     curveVertex(this._getPosX(0, PI/6, 0), this._getPosY(0, PI/6, 0));
 
-    // Some overlap needed because curveVertex requires extra vertices that are not rendered
+    // Trailing vertices for smooth curve closure (repeat first vertices)
     curveVertex(this._getPosX(0, PI/2, 0), this._getPosY(0, PI/2, 0));
     curveVertex(this._getPosX(1, PI/2, 0), this._getPosY(1, PI/2, 0));
     curveVertex(this._getPosX(2, PI/2, 0), this._getPosY(2, PI/2, 0));
