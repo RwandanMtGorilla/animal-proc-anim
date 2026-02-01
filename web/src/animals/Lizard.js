@@ -29,9 +29,6 @@ export class Lizard {
 
     // Width of the lizard at each vertebra
     this.bodyWidth = [52, 58, 40, 60, 68, 71, 65, 50, 28, 15, 11, 9, 7, 7];
-
-    // Smooth target for reducing jitter
-    this.smoothTarget = null;
   }
 
   /**
@@ -40,18 +37,11 @@ export class Lizard {
   resolve() {
     const headPos = this.spine.joints[0];
     const mousePos = createVector(mouseX, mouseY);
-    const rawTarget = p5.Vector.add(
+    const targetPos = p5.Vector.add(
       headPos,
       p5.Vector.sub(mousePos, headPos).setMag(12)
     );
-
-    // Exponential smoothing to reduce jitter (0.15 = smoothing factor)
-    if (!this.smoothTarget) {
-      this.smoothTarget = rawTarget.copy();
-    }
-    this.smoothTarget.lerp(rawTarget, 0.15);
-
-    this.spine.resolve(this.smoothTarget);
+    this.spine.resolve(targetPos);
 
     // Update each leg with FABRIK
     for (let i = 0; i < this.arms.length; i++) {
@@ -118,11 +108,6 @@ export class Lizard {
     // === START BODY ===
     beginShape();
 
-    // Leading vertices for smooth curve closure (tangent control)
-    curveVertex(this._getPosX(0, -PI/6, -8), this._getPosY(0, -PI/6, -10));
-    curveVertex(this._getPosX(0, 0, -6), this._getPosY(0, 0, -4));
-    curveVertex(this._getPosX(0, PI/6, -8), this._getPosY(0, PI/6, -10));
-
     // Right half of the lizard
     for (let i = 0; i < this.spine.joints.length; i++) {
       curveVertex(this._getPosX(i, PI/2, 0), this._getPosY(i, PI/2, 0));
@@ -138,7 +123,7 @@ export class Lizard {
     curveVertex(this._getPosX(0, 0, -6), this._getPosY(0, 0, -4));
     curveVertex(this._getPosX(0, PI/6, -8), this._getPosY(0, PI/6, -10));
 
-    // Trailing vertices for smooth curve closure (repeat first vertices)
+    // Some overlap needed because curveVertex requires extra vertices that are not rendered
     curveVertex(this._getPosX(0, PI/2, 0), this._getPosY(0, PI/2, 0));
     curveVertex(this._getPosX(1, PI/2, 0), this._getPosY(1, PI/2, 0));
     curveVertex(this._getPosX(2, PI/2, 0), this._getPosY(2, PI/2, 0));
